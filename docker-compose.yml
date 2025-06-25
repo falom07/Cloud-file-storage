@@ -1,0 +1,45 @@
+version: '3.6'
+services:
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    environment:
+      DB_DATASOURCE_USER: ${USERNAME}
+      DB_DATASOURCE_PASSWORD: ${PASSWORD}
+      DB_DATASOURCE_URL: ${URL_FOR_DOCKER}
+    networks:
+      - cloud-file
+    ports:
+      - "8080:8080"
+
+  postgres:
+    image: postgres:17.5
+    restart: always
+    container_name: postgres-container
+    env_file:
+      - .env
+    environment:
+       POSTGRES_USER: ${USERNAME}
+       POSTGRES_PASSWORD: ${PASSWORD}
+       POSTGRES_DB: ${DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - cloud-file
+
+volumes:
+  pgdata:
+
+networks:
+  cloud-file:
+    driver: bridge
+    name: cloud-file
+
