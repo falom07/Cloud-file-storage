@@ -1,10 +1,8 @@
 package com.example.cloudfilestorage.Repository;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Conditional;
-import org.springframework.stereotype.Controller;
+import com.example.cloudfilestorage.Entity.User;
+import org.springframework.data.repository.Repository;
 
-@Controller
-@RequiredArgsConstructor
-public class UserRepository {
+public interface UserRepository extends Repository<User, Long> {
+    User findByUsername(String username);
 }

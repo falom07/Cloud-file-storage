@@ -2,27 +2,58 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Фінансовий звіт2</title>
-
+    <title>Кольорова таблиця</title>
+    <style>
+        table {
+            border: 4px solid blue;
+            border-collapse: collapse;
+        }
+        td, th {
+            border: 2px solid green;
+            padding: 10px;
+            text-align: center;
+        }
+        .header {
+            background-color: #fdd;
+        }
+        .sub-header {
+            background-color: #dfd;
+        }
+        .footer {
+            background-color: #ff7;
+        }
+    </style>
 </head>
 <body>
 
-<table border="1px">
-    <caption>Фінансовий звіт компанії за 2023–2024 роки</caption>
-
+<table>
     <tr>
-        <th rowspan="2">Блок</th>
-        <th rowspan="2">Категорія</th>
-        <th colspan="4">2023</th>
-        <th colspan="4">2024</th>
+        <th rowspan="2">Один</th>
+        <th colspan="3">Два</th>
     </tr>
-    <tr>
-        <th >Блок</th>
-        <th >Категорія</th>
-        <th >2023</th>
-        <th >2024</th>
+    <tr class="header">
+        <td>2</td>
+        <td>3</td>
+        <td>4</td>
     </tr>
-
+    <tr class="sub-header">
+        <td>1</td>
+        <td>2a</td>
+        <td>3a</td>
+        <td>4a</td>
+    </tr>
+    <tr class="sub-header">
+        <td>1b</td>
+        <td>2b</td>
+        <td>3b</td>
+        <td>4b</td>
+    </tr>
+    <tr class="footer">
+        <td></td>
+        <td>2с</td>
+        <td>3с</td>
+        <td>4с</td>
+    </tr>
 </table>
 
 </body>
