@@ -31,9 +31,7 @@ public class SecurityConfiguration {
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
                         .permitAll())
-                .cors(cors -> cors.disable())
-        
-        ;
+                .cors(cors -> cors.disable());
 
         return http.build();
     }
