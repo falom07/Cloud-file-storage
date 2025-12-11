@@ -6,4 +6,3 @@ create table if not exists users(
     username varchar unique not null,
     password varchar not null
 )
-
