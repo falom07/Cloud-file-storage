@@ -5,9 +5,10 @@ import com.example.cloudfilestorage.Service.MyUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-@RestController
+@Controller
 public class HomePageController {
 
     private MyUserDetailsService myUserDetailsService;
@@ -17,13 +18,12 @@ public class HomePageController {
         this.myUserDetailsService = myUserDetailsService;
     }
 
-    @GetMapping
-    public String getFirstPage() {
+    public String defaultPage() {
         return "home";
     }
 
     @GetMapping("/home")
-    public String name() {
+    public String homePage() {
         return "home";
     }
 

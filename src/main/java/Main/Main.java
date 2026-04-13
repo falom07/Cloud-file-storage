@@ -21,7 +21,8 @@ public class Main {
         String rawPassword = "1234";
         String encodedPassword = encoder.encode(rawPassword);
 
-        System.out.println("Хеш пароля: " + encodedPassword);
+
+        System.out.println("Хеш пароля: " + encodedPassword + " " + encoder.matches(rawPassword,"$2a$10$S0XOdvL6SmcVrk.Wzy1RC..isbeI.PL950/Vd7r00lQkye6NmqsNm"));
 
 //
 //        String g = "dsfs";

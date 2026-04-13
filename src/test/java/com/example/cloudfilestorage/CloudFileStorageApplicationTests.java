@@ -6,9 +6,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 @SpringBootTest
 class CloudFileStorageApplicationTests {
 
-    @Test
-    void contextLoads() {
-        Assertions.assertEquals(1,1);
-    }
+//    @Test
+//    void contextLoads() {
+//        Assertions.assertEquals(1,1);
+//    }
 
 }

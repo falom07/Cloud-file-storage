@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <title>Фінансовий звіт</title>
@@ -23,8 +23,19 @@
         <th >2024</th>
     </tr>
 
-</table>
+</table><br>
 
+<form th:method="post" th:action="@{/files/upload}" enctype="multipart/form-data">
+    <label for="imgFile">Choose images</label><br>
+    <input type="file" id="imgFile" name="file"><br>
+
+    <button type="submit">Upload image</button>
+</form><br>
+
+<form th:method="get" th:action="@{/files/download}">
+    <label for="file"> Input name of file</label><br>
+    <input type="text" name="file" id="file">
+    <button type="submit">Download image</button>
+</form>
 </body>
 </html>
-<!--@REN1One_OV-->

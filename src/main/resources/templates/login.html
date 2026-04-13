@@ -7,7 +7,7 @@
 <body>
 <h2>Вхід до системи</h2>
 
-<form th:method="post" th:action="@{/login}">
+<form th:method="post" th:action="@{/auth/sign-in}">
     <label for="username">Ім'я користувача:</label>
     <input type="text" id="username" name="username" required><br><br>
 
@@ -25,5 +25,9 @@
 <p style="color:green;" th:if="${param.logout}">
     Ви вийшли із системи.
 </p>
+
+<form th:action="@{/auth/sign-up}" th:method="get">
+    <button type="submit">Sign-Up</button>
+</form>
 </body>
 </html>
