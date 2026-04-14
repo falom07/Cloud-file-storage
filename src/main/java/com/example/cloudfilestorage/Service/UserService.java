@@ -6,6 +6,7 @@ import com.example.cloudfilestorage.Repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -15,10 +16,10 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final BCryptPasswordEncoder encoder;
+    private final PasswordEncoder encoder;
 
     @Autowired
-    public UserService(UserRepository userRepository, BCryptPasswordEncoder encoder) {
+    public UserService(UserRepository userRepository, PasswordEncoder encoder) {
         this.userRepository = userRepository;
         this.encoder = encoder;
     }
@@ -34,5 +35,14 @@ public class UserService {
         );
 
         userRepository.save(user);
+    }
+
+    public Integer getUserIdByName(String ownerName) {
+        Optional<User> user = userRepository.findByUsername(ownerName);
+        if(user.isPresent()){
+            return user.get().getId();
+        } else {
+            throw new RuntimeException("No found user with username: " + ownerName);
+        }
     }
 }
