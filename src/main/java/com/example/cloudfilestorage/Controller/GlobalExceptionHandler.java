@@ -11,7 +11,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidResourcePathException.class)
     public ResponseEntity<ErrorResponse> handleResourcePath() {
-        ErrorResponse error = new ErrorResponse("Invalid or is empty path");
+        ErrorResponse error = new ErrorResponse("Invalid or empty path");
 
         return ResponseEntity.badRequest().body(error);
     }
@@ -25,7 +25,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotExistException.class)
     public ResponseEntity<ErrorResponse> handleInvalidResourcePath() {
-        ErrorResponse error = new ErrorResponse("File not found");
+        ErrorResponse error = new ErrorResponse("File is not exist");
 
         return ResponseEntity.badRequest().body(error);
     }

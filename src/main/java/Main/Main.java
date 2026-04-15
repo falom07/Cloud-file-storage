@@ -9,32 +9,15 @@ import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
-
-//        String s = "qw";
-//        String s2 = "wq";
-//        List<Integer> list = List.of(12,3,4,4);
-//        System.out.println(Arrays.asList(list));
-//
-//        System.out.println(s.hashCode());
-//        System.out.println(s2.hashCode());
-        PasswordEncoder encoder = new BCryptPasswordEncoder();
-        String rawPassword = "1234";
-        String encodedPassword = encoder.encode(rawPassword);
-
-
-        System.out.println("Хеш пароля: " + encodedPassword + " " + encoder.matches(rawPassword,"$2a$10$S0XOdvL6SmcVrk.Wzy1RC..isbeI.PL950/Vd7r00lQkye6NmqsNm"));
-
-//
-//        String g = "dsfs";
-//        run("CloudFileStorage",2);
-//        run(g,2);
-
+        String path = "qwe/qwe/qwe/qwesdf/q/qwe/sdf/sfwer/txt.txt";
+        String fileName = path.substring(path.lastIndexOf("/") + 1);
+        System.out.println(fileName);
 
 
     }
 
-    private static void run(String name,int index){
-        System.out.println("Running..." +  name + name );
+    private static void run(String name, int index) {
+        System.out.println("Running..." + name + name);
     }
 
 //    1.модіфікатор доступа - public default protected private

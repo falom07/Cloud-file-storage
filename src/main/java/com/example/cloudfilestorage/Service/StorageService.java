@@ -1,18 +1,25 @@
 package com.example.cloudfilestorage.Service;
 
-import io.minio.GetObjectArgs;
-import io.minio.MinioClient;
-import io.minio.RemoveObjectArgs;
+import com.example.cloudfilestorage.DTO.ResourceMoveDTO;
+import com.example.cloudfilestorage.Exception.InvalidResourcePathException;
+import com.example.cloudfilestorage.Exception.ResourceNotExistException;
+import io.minio.*;
 import io.minio.errors.*;
+import io.minio.messages.Item;
+import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
+import lombok.SneakyThrows;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static com.example.cloudfilestorage.Util.Util.BUCKET_NAME;
+import static io.micrometer.core.instrument.config.validate.DurationValidator.validate;
 
 @Service
 @Transactional
@@ -24,6 +31,30 @@ public class StorageService {
     public StorageService(MinioClient minioClient, UserService userService) {
         this.minioClient = minioClient;
         this.userService = userService;
+    }
+
+
+    @PostConstruct
+    public void init() {
+        createBucketIfNotExists(BUCKET_NAME);
+    }
+
+    private void createBucketIfNotExists(String nameOfBucket) {
+        try {
+            boolean isExist = minioClient.bucketExists(
+                    BucketExistsArgs.builder().bucket(nameOfBucket).build()
+            );
+
+            if (!isExist) {
+                minioClient.makeBucket(
+                        MakeBucketArgs.builder().bucket(nameOfBucket).build()
+                );
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error during creating bucket ", e);
+        }
+
     }
 
     public void deleteFile(String path, String ownerName) {
@@ -43,16 +74,154 @@ public class StorageService {
         }
     }
 
-    public InputStream getFile(String bucket, String nameOfFile) {
+    public InputStream downloadFile(String pathOfFile) {
         try {
             return minioClient.getObject(
                     GetObjectArgs.builder()
-                            .bucket(bucket)
-                            .object(nameOfFile)
+                            .bucket(BUCKET_NAME)
+                            .object(pathOfFile)
                             .build()
             );
         } catch (Exception e) {
-            throw new RuntimeException("Geting file was failed", e);
+            throw new RuntimeException("Getting file was failed", e);
+        }
+    }
+
+    public void addFolderToZip(String path, ZipOutputStream zipOut) {
+        try {
+            Iterable<Result<Item>> results = minioClient.listObjects(
+                    ListObjectsArgs.builder()
+                            .bucket(BUCKET_NAME)
+                            .prefix(path)
+                            .recursive(true)
+                            .build()
+            );
+
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                addFileToZip(item.objectName(), zipOut);
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed during build zip file from folder ");
+        }
+    }
+
+    public void addFileToZip(String path, ZipOutputStream zipOut) throws IOException {
+        InputStream stream = downloadFile(path);
+        String fileName = extractFileName(path);
+
+        zipOut.putNextEntry(new ZipEntry(fileName));
+        stream.transferTo(zipOut);
+        zipOut.closeEntry();
+
+        stream.close();
+    }
+
+    private String extractFileName(String path) {
+        return path.substring(path.lastIndexOf("/") + 1);
+    }
+
+    public void deleteDirectory(String path, String username) {
+        try {
+            Iterable<Result<Item>> results = minioClient.listObjects(
+                    ListObjectsArgs.builder()
+                            .bucket(BUCKET_NAME)
+                            .prefix(path)
+                            .recursive(true)
+                            .build()
+            );
+
+            for (Result<Item> result : results) {
+                Item item = result.get();
+                deleteFile(item.objectName(), username);
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed during delete folder ");
+        }
+    }
+
+    public void move(String from, String to, String ownerName) {
+        validate(from, to);
+
+        if (!fileOrDirectoryIsExist(to)) {
+            throw new ResourceNotExistException();
+        }
+
+        Integer userId = userService.getUserIdByName(ownerName);
+        String fromFullPath = "user-" + userId + "-files/" + from;
+        String toFullPath = "user-" + userId + "-files/" + to;
+
+        if (from.endsWith("/")) {
+            moveDirectory(fromFullPath, toFullPath,ownerName);
+        } else {
+            moveFiles(fromFullPath, toFullPath, ownerName);
+        }
+    }
+
+    @SneakyThrows
+    private void moveDirectory(String fromFullPath, String toFullPath,String ownerName) {
+        Iterable<Result<Item>> results = minioClient.listObjects(
+                ListObjectsArgs.builder()
+                        .bucket(BUCKET_NAME)
+                        .prefix(fromFullPath)
+                        .recursive(true)
+                        .build()
+        );
+
+        for (Result<Item> result : results){
+            String from = result.get().objectName();
+            String relativePath = from.substring(fromFullPath.length());
+            String toPath = toFullPath + relativePath;
+
+            moveFiles(from,toPath,ownerName);
+        }
+    }
+
+    private void moveFiles(String from, String to, String ownerName) {
+        try {
+            minioClient.copyObject(
+                    CopyObjectArgs.builder()
+                            .bucket(BUCKET_NAME)
+                            .object(to)
+                            .source(
+                                    CopySource.builder()
+                                            .bucket(BUCKET_NAME)
+                                            .object(from)
+                                            .build()
+                            )
+                            .build()
+            );
+
+            deleteFile(from, ownerName);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed during moving or rename File");
+        }
+    }
+
+    private boolean fileOrDirectoryIsExist(String path) {
+        try {
+            minioClient.statObject(
+                    StatObjectArgs.builder()
+                            .bucket(BUCKET_NAME)
+                            .object(path)
+                            .build()
+            );
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void validate(String from, String to) {
+        if (from == null || from.isEmpty() || to == null || to.isEmpty()) {
+            throw new InvalidResourcePathException();
+        }
+
+        if (from.equals(to)) {
+            throw new InvalidResourcePathException();
         }
     }
 }
