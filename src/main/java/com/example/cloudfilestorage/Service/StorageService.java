@@ -1,6 +1,7 @@
 package com.example.cloudfilestorage.Service;
 
 import com.example.cloudfilestorage.DTO.ResourceMoveDTO;
+import com.example.cloudfilestorage.Entity.User;
 import com.example.cloudfilestorage.Exception.InvalidResourcePathException;
 import com.example.cloudfilestorage.Exception.ResourceNotExistException;
 import io.minio.*;
@@ -10,7 +11,9 @@ import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.SneakyThrows;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidKeyException;
@@ -154,14 +157,14 @@ public class StorageService {
         String toFullPath = "user-" + userId + "-files/" + to;
 
         if (from.endsWith("/")) {
-            moveDirectory(fromFullPath, toFullPath,ownerName);
+            moveDirectory(fromFullPath, toFullPath, ownerName);
         } else {
             moveFiles(fromFullPath, toFullPath, ownerName);
         }
     }
 
     @SneakyThrows
-    private void moveDirectory(String fromFullPath, String toFullPath,String ownerName) {
+    private void moveDirectory(String fromFullPath, String toFullPath, String ownerName) {
         Iterable<Result<Item>> results = minioClient.listObjects(
                 ListObjectsArgs.builder()
                         .bucket(BUCKET_NAME)
@@ -170,12 +173,12 @@ public class StorageService {
                         .build()
         );
 
-        for (Result<Item> result : results){
+        for (Result<Item> result : results) {
             String from = result.get().objectName();
             String relativePath = from.substring(fromFullPath.length());
             String toPath = toFullPath + relativePath;
 
-            moveFiles(from,toPath,ownerName);
+            moveFiles(from, toPath, ownerName);
         }
     }
 
@@ -222,6 +225,47 @@ public class StorageService {
 
         if (from.equals(to)) {
             throw new InvalidResourcePathException();
+        }
+    }
+
+    public void uploadResource(String path, MultipartFile file, String username) {
+        Integer userId = userService.getUserIdByName(username);
+        String fullPath = "user-" + userId + "-files/" + path;
+        String fileName = file.getOriginalFilename();
+        String objectName = fullPath + fileName;
+
+        try {
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(BUCKET_NAME)
+                            .object(objectName)
+                            .stream(file.getInputStream(), file.getSize(), -1)
+                            .contentType(file.getContentType())
+                            .build()
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Failed during upload file:" + fileName);
+        }
+
+    }
+
+    public void createDirectory(String path,String username) {
+        Integer userId = userService.getUserIdByName(username);
+        String fullPath = "user-" + userId + "-files/" + path.substring(0,path.lastIndexOf("/") + 1);
+        try {
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(BUCKET_NAME)
+                            .object(fullPath)
+                            .stream(
+                                    new ByteArrayInputStream(new byte[]{}),
+                                    0,
+                                    -1
+                            )
+                            .build()
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Failed during creating directory");
         }
     }
 }

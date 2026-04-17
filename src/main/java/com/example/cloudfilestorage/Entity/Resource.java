@@ -1,11 +1,7 @@
 package com.example.cloudfilestorage.Entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -15,6 +11,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@RequiredArgsConstructor
 @ToString
 public class Resource {
 
@@ -40,4 +37,12 @@ public class Resource {
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    public Resource(String path, String name, Long size, ResourceType type, User owner) {
+        this.path = path;
+        this.name = name;
+        this.size = size;
+        this.type = type;
+        this.owner = owner;
+    }
 }

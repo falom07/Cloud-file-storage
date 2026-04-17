@@ -45,4 +45,8 @@ public class UserService {
             throw new RuntimeException("No found user with username: " + ownerName);
         }
     }
+
+    public User getUserById(Integer userId) {
+        return userRepository.findById(userId);
+    }
 }
