@@ -8,6 +8,7 @@ services:
     depends_on:
       - postgres
       - minio
+      - front-end
     env_file:
       - .env
     environment:
@@ -35,6 +36,11 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks:
       - cloud-file
+
+  front-end:
+    image: my-front:5.0
+    ports:
+      - "80:80"
 
   minio:
     image: quay.io/minio/minio

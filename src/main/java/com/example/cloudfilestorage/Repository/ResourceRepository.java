@@ -26,11 +26,11 @@ public interface ResourceRepository extends JpaRepository<Resource, Long> {
 
     @Modifying
     @Query("""
-            UPDATE resources r 
-            SET name = :oldName 
+            UPDATE Resource r
+            SET name = :oldName
             WHERE r.type = :type AND r.name = :newName AND r.path = :path
             """)
-    Resource updateNameOfResource(@Param("oldName") String oldName,
+    void updateNameOfResource(@Param("oldName") String oldName,
                               @Param("newName") String newName,
                               @Param("type") String type,
                               @Param("path") String path);
