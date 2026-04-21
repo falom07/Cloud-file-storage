@@ -12,40 +12,44 @@ import java.util.List;
 
 @Component
 public class ResourceMapper {
-//
-//    public ResourceDTO mapResourceDto(Resource resource){
-//        return new ResourceDTO(
-//                resource.getPath(),
-//                resource.getName(),
-//                resource.getSize(),
-//                resource.getType(),
-//                resource.getOwner(),
-//                resource.getCreatedAt()
-//        );
-//    }
 
-    public FileDTO mapResourceDto(Resource resource) {
+
+    public ResourceDTO mapFileDto(Resource resource) {
         return new FileDTO(
-                resource.getPath(),
+                resource.getPath().substring(resource.getPath().indexOf("/") + 1),
                 resource.getName(),
                 resource.getSize(),
                 resource.getType()
         );
     }
 
-    public List<FileDTO> mapResourcesDto(List<Resource> resource) {
-        List<FileDTO> list = new ArrayList<>();
+    public List<ResourceDTO> mapResourcesDto(List<Resource> resource) {
+        List<ResourceDTO> list = new ArrayList<>();
         for (Resource path : resource) {
-            list.add(mapResourceDto(path));
+            if (path.getType().equals(ResourceType.FILE)) {
+                list.add(mapFileDto(path));
+            } else {
+                list.add(mapDirectoryDTO(path, ""));
+            }
         }
 
         return list;
     }
 
-    public DirectoryDTO mapDirectoryDTO(Resource resource) {
+    public List<ResourceDTO> mapDirectoriesDto(List<Resource> resources) {
+        List<ResourceDTO> list = new ArrayList<>();
+        for (Resource resource : resources) {
+            ResourceDTO dto = resource.getType().equals(ResourceType.DIRECTORY)
+                    ? mapDirectoryDTO(resource, "/") : mapFileDto(resource);
+            list.add(dto);
+        }
+        return list;
+    }
+
+    public DirectoryDTO mapDirectoryDTO(Resource resource, String end) {
         return new DirectoryDTO(
-                resource.getPath(),
-                resource.getName(),
+                resource.getPath().substring(resource.getPath().indexOf("/") + 1),
+                resource.getName() + end,
                 ResourceType.DIRECTORY
         );
     }

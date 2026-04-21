@@ -27,7 +27,7 @@ public interface ResourceRepository extends JpaRepository<Resource, Long> {
     @Modifying
     @Query("""
             UPDATE Resource r
-            SET name = :oldName
+            SET r.name = :oldName
             WHERE r.type = :type AND r.name = :newName AND r.path = :path
             """)
     void updateNameOfResource(@Param("oldName") String oldName,
@@ -45,5 +45,9 @@ public interface ResourceRepository extends JpaRepository<Resource, Long> {
                    @Param("newPath") String newPath);
 
     List<Resource> findByNameContainingIgnoreCase(String name);
+
+    Optional<Resource> getResourceByPathAndName(String path, String name);
+
+    Optional<Resource> getResourceByPath(String path);
 }
 

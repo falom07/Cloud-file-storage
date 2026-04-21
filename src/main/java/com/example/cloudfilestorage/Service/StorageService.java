@@ -1,11 +1,8 @@
 package com.example.cloudfilestorage.Service;
 
-import com.example.cloudfilestorage.DTO.ResourceMoveDTO;
-import com.example.cloudfilestorage.Entity.User;
 import com.example.cloudfilestorage.Exception.InvalidResourcePathException;
 import com.example.cloudfilestorage.Exception.ResourceNotExistException;
 import io.minio.*;
-import io.minio.errors.*;
 import io.minio.messages.Item;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
@@ -16,13 +13,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static com.example.cloudfilestorage.Util.Util.BUCKET_NAME;
-import static io.micrometer.core.instrument.config.validate.DurationValidator.validate;
 
 @Service
 @Transactional
@@ -204,7 +199,7 @@ public class StorageService {
         }
     }
 
-    private boolean fileOrDirectoryIsExist(String path) {
+    public boolean fileOrDirectoryIsExist(String path) {
         try {
             minioClient.statObject(
                     StatObjectArgs.builder()
@@ -228,30 +223,33 @@ public class StorageService {
         }
     }
 
-    public void uploadResource(String path, MultipartFile file, String username) {
+    public void uploadResource(String path, List<MultipartFile> files, String username) {
         Integer userId = userService.getUserIdByName(username);
         String fullPath = "user-" + userId + "-files/" + path;
-        String fileName = file.getOriginalFilename();
-        String objectName = fullPath + fileName;
 
-        try {
-            minioClient.putObject(
-                    PutObjectArgs.builder()
-                            .bucket(BUCKET_NAME)
-                            .object(objectName)
-                            .stream(file.getInputStream(), file.getSize(), -1)
-                            .contentType(file.getContentType())
-                            .build()
-            );
-        } catch (Exception e) {
-            throw new RuntimeException("Failed during upload file:" + fileName);
+        for(MultipartFile file : files) {
+            String fileName = file.getOriginalFilename();
+            String objectName = fullPath + fileName;
+            if (fileOrDirectoryIsExist(objectName)) { throw new InvalidResourcePathException(); }
+
+            try {
+                minioClient.putObject(
+                        PutObjectArgs.builder()
+                                .bucket(BUCKET_NAME)
+                                .object(objectName)
+                                .stream(file.getInputStream(), file.getSize(), -1)
+                                .contentType(file.getContentType())
+                                .build()
+                );
+            } catch (Exception e) {
+                throw new RuntimeException("Failed during upload file:" + fileName);
+            }
         }
-
     }
 
-    public void createDirectory(String path,String username) {
+    public void createDirectory(String path, String username) {
         Integer userId = userService.getUserIdByName(username);
-        String fullPath = "user-" + userId + "-files/" + path.substring(0,path.lastIndexOf("/") + 1);
+        String fullPath = "user-" + userId + "-files/" + path.substring(0, path.lastIndexOf("/") + 1);
         try {
             minioClient.putObject(
                     PutObjectArgs.builder()

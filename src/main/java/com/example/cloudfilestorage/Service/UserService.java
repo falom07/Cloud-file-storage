@@ -2,6 +2,7 @@ package com.example.cloudfilestorage.Service;
 
 import com.example.cloudfilestorage.DTO.UserDTO;
 import com.example.cloudfilestorage.Entity.User;
+import com.example.cloudfilestorage.Exception.UserAlreadyExistException;
 import com.example.cloudfilestorage.Repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +27,7 @@ public class UserService {
 
     public void createUser(UserDTO userDTO){
         if(userRepository.findByUsername(userDTO.username()).isPresent()){
-            throw new RuntimeException("User already exists");
+            throw new UserAlreadyExistException("User already exists");
         }
 
         User user = new User(
