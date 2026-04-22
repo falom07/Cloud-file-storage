@@ -6,7 +6,6 @@ import com.example.cloudfilestorage.DTO.ResourceDTO;
 import com.example.cloudfilestorage.Exception.InvalidResourcePathException;
 import com.example.cloudfilestorage.Service.ResourceService;
 import com.example.cloudfilestorage.Service.StorageService;
-import com.example.cloudfilestorage.Service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -34,12 +33,10 @@ public class ResourceController {
 
     private final ResourceService resourceService;
     private final StorageService storageService;
-    private final UserService userService;
 
-    public ResourceController(ResourceService resourceService, StorageService storageService, UserService userService) {
+    public ResourceController(ResourceService resourceService, StorageService storageService) {
         this.resourceService = resourceService;
         this.storageService = storageService;
-        this.userService = userService;
     }
 
     @Operation(summary = "Взяти ресурс по шляху")
@@ -79,7 +76,9 @@ public class ResourceController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @DeleteMapping
-    public ResponseEntity<Void> deleteResource(@RequestParam List<String> path, Authentication auth) {
+    public ResponseEntity<Void> deleteResource(
+            @Parameter(description = "Колекція шляхів за якими будуть видалені ресурси", example = "main/src/prod/")
+            @RequestParam List<String> path, Authentication auth) {
 
         if (path == null || path.isEmpty()) {
             throw new InvalidResourcePathException();
@@ -123,9 +122,20 @@ public class ResourceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(resourceDTO);
     }
 
+    @Operation(summary = "Скачування ресурсів")
+    @ApiResponses({
+            @ApiResponse(responseCode = "400", description = "Невалідний,або відсутній шлях",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Користувач не авторизований",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Ресурс не знайдений ",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Помилка сервера",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @GetMapping("/download")
-    public void downloadResource(
-            @RequestParam("path") List<String> path, Authentication auth, HttpServletResponse response) throws IOException {
+    public void downloadResource(@Parameter(description = "Список шляхів до ресурсів які будуть скачені", example = "main/src/prod/")
+                                 @RequestParam("path") String path, Authentication auth, HttpServletResponse response) throws IOException {
 
         if (path == null || path.isEmpty()) {
             throw new InvalidResourcePathException();
@@ -133,16 +143,30 @@ public class ResourceController {
 
         String username = auth.getName();
 
-        if (path.size() == 1 && !path.get(0).endsWith("/")) {
-            downloadSingleFile(path.get(0), username, response);
+        if (!path.endsWith("/")) {
+            downloadSingleFile(path, username, response);
         } else {
             downloadZip(path, username, response);
         }
     }
 
+    @Operation(summary = "Переміщення ресурсів та періймуваня")
+    @ApiResponses({
+            @ApiResponse(responseCode = "400", description = "Невалідний,або відсутній шлях",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Користувач не авторизований",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Ресурс не знайдений ",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Ресурс по пути to уже существует ",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Помилка сервера",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @GetMapping("/move")
     public ResponseEntity<FileDTO> move(
-            @RequestParam("from") String from, @RequestParam("to") String to, Authentication auth) {
+            @Parameter(description = "Папку яку ми хочему переймувати", example = "main/src/prod/") @RequestParam("from") String from,
+            @Parameter(description = "Як вона буде переймована", example = "main/src/prod2/") @RequestParam("to") String to, Authentication auth) {
         String username = auth.getName();
 
         storageService.move(from, to, username);
@@ -151,8 +175,18 @@ public class ResourceController {
         return ResponseEntity.ok(resource);
     }
 
+    @Operation(summary = "Знайти ресурс")
+    @ApiResponses({
+            @ApiResponse(responseCode = "400", description = "Невалідний,або відсутній шлях",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Користувач не авторизований",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Помилка сервера",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @GetMapping("/search")
-    public ResponseEntity<List<ResourceDTO>> find(@RequestParam("query") String query) {
+    public ResponseEntity<List<ResourceDTO>> find(
+            @Parameter(description = "частина від імені ресурсу", example = "file.txt") @RequestParam("query") String query) {
         List<ResourceDTO> files = resourceService.findByQuery(query);
         return ResponseEntity.ok(files);
     }
@@ -160,8 +194,7 @@ public class ResourceController {
 
     private void downloadSingleFile(String path, String username, HttpServletResponse response) throws IOException {
         FileDTO dto = (FileDTO) resourceService.getInfoAboutFile(path, username);
-        String fullPath = dto.path() + dto.name();
-        InputStream stream = storageService.downloadFile(fullPath);
+        InputStream stream = storageService.downloadFile(username, dto);
 
         response.setContentType("application/octet-stream");
         response.setHeader("Content-Disposition",
@@ -175,22 +208,13 @@ public class ResourceController {
         return path.substring(path.lastIndexOf("/") + 1);
     }
 
-    private void downloadZip(List<String> paths, String username, HttpServletResponse response) throws IOException {
+    private void downloadZip(String path, String username, HttpServletResponse response) throws IOException {
         response.setContentType("application/octet-stream");
         response.setHeader("Content-Disposition", "attachment; filename=download.zip");
 
         ZipOutputStream zipOut = new ZipOutputStream(response.getOutputStream());
-        Integer userId = userService.getUserIdByName(username);
+        storageService.addFolderToZip(username, zipOut, path);
 
-        for (String path : paths) {
-            String fullPath = "user-" + userId + "-files/" + path;
-
-            if (path.endsWith("/")) {
-                storageService.addFolderToZip(fullPath, zipOut);
-            } else {
-                storageService.addFileToZip(fullPath, zipOut);
-            }
-        }
         zipOut.finish();
     }
 

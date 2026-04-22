@@ -29,7 +29,7 @@ public class ResourceMapper {
             if (path.getType().equals(ResourceType.FILE)) {
                 list.add(mapFileDto(path));
             } else {
-                list.add(mapDirectoryDTO(path, ""));
+                list.add(mapDirectoryDTO(path));
             }
         }
 
@@ -40,16 +40,16 @@ public class ResourceMapper {
         List<ResourceDTO> list = new ArrayList<>();
         for (Resource resource : resources) {
             ResourceDTO dto = resource.getType().equals(ResourceType.DIRECTORY)
-                    ? mapDirectoryDTO(resource, "/") : mapFileDto(resource);
+                    ? mapDirectoryDTO(resource) : mapFileDto(resource);
             list.add(dto);
         }
         return list;
     }
 
-    public DirectoryDTO mapDirectoryDTO(Resource resource, String end) {
+    public DirectoryDTO mapDirectoryDTO(Resource resource) {
         return new DirectoryDTO(
                 resource.getPath().substring(resource.getPath().indexOf("/") + 1),
-                resource.getName() + end,
+                resource.getName() + "/",
                 ResourceType.DIRECTORY
         );
     }
