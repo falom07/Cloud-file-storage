@@ -55,30 +55,7 @@ public class ResourceService {
                 .orElseThrow(ResourceNotExistException::new);
     }
 
-    public void deleteDirectory(String path, String username) {
-        Integer userId = userService.getUserIdByName(username);
-        String fullPath = getFullPath(username, path);
-        resourceRepository.deleteResourcesByOwnerIdAndPath(userId, fullPath);
 
-        String directoryName = getDirectoryName(fullPath);
-        fullPath = getParentPath(fullPath, 1);
-        resourceRepository.deleteDirectoryByOwnerIdAndPathAndName(userId, fullPath, directoryName);
-    }
-
-    private String getDirectoryName(String fullPath) {
-        String directoryName = getPathWithOutSlash(fullPath);
-        directoryName = getResourceName(directoryName);
-        return directoryName;
-    }
-
-    private static String getParentPath(String path, int levels) {
-        for (int i = 0; i < levels; i++) {
-            if (path.lastIndexOf("/") != path.indexOf("/")) {
-                path = getParentPathOfDirectory(path);
-            }
-        }
-        return path;
-    }
 
     public ResourceDTO move(String from, String to, String username) {
         String fullPathFrom = getFullPath(username, from);
@@ -101,16 +78,22 @@ public class ResourceService {
 
         resourceRepository.updateFilePathAndName(pathFrom, pathTo, ResourceType.FILE, fileNameFrom, fileNameTo);
         Resource resource = resourceRepository.getResourceByPathAndNameAndUserIdAndType(pathTo, fileNameTo, userId, ResourceType.FILE);
-
         return resourceMapper.mapFileDto(resource);
     }
 
     private ResourceDTO moveDirectory(String from, String to, String fullPathFrom, String fullPathTo, Integer userId) {
 
-        String nameOfFileFrom = getParentPathOfDirectory(from);
-        String nameOfFileTo = getParentPathOfDirectory(to);
-        String pathFrom = getParentPathOfDirectory(fullPathFrom);
-        String pathTo = getParentPathOfDirectory(fullPathTo);
+        String nameOfFileFrom = getPathWithOutSlash(from);
+        nameOfFileFrom = getResourceName(nameOfFileFrom);
+
+        String nameOfFileTo = getPathWithOutSlash(to);
+        nameOfFileTo = getResourceName(nameOfFileTo);
+
+        String pathFrom = fullPathFrom.substring(0, fullPathFrom.lastIndexOf("/"));
+        pathFrom = getParentPath(pathFrom);
+
+        String pathTo = fullPathTo.substring(0, fullPathTo.lastIndexOf("/"));
+        pathTo = getParentPath(pathTo);
 
         resourceRepository.updateNameAndPathOfResource(nameOfFileFrom, nameOfFileTo, ResourceType.DIRECTORY, userId, pathFrom, pathTo);
         resourceRepository.updatePaths(fullPathFrom, fullPathTo);
@@ -197,11 +180,6 @@ public class ResourceService {
         return path.substring(0, path.length() - 1);
     }
 
-    private static String getParentPathOfDirectory(String path){
-        path = getPathWithOutSlash(path);
-        return getParentPath(path);
-    }
-
     private static String getParentPath(String path) {
         return path.substring(0, path.lastIndexOf("/") + 1);
     }
@@ -220,5 +198,31 @@ public class ResourceService {
     private String getFullPath(String username, String path) {
         Integer userId = userService.getUserIdByName(username);
         return "user-" + userId + "-files/" + path;
+    }
+
+    public void deleteDirectory(String path, String username) {
+        Integer userId = userService.getUserIdByName(username);
+        String fullPath = getFullPath(username, path);
+        resourceRepository.deleteResourcesByOwnerIdAndPath(userId, fullPath);
+
+        String directoryName = getDirectoryName(fullPath);
+        fullPath = getParentPath(fullPath, 1);
+        resourceRepository.deleteDirectoryByOwnerIdAndPathAndName(userId, fullPath, directoryName);
+    }
+
+    private String getDirectoryName(String fullPath) {
+        String directoryName = getPathWithOutSlash(fullPath);
+        directoryName = getResourceName(directoryName);
+        return directoryName;
+    }
+
+    private static String getParentPath(String path, int levels) {
+        for (int i = 0; i < levels; i++) {
+            if (path.lastIndexOf("/") != path.indexOf("/")) {
+                path = getPathWithOutSlash(path);
+                path = getParentPath(path);
+            }
+        }
+        return path;
     }
 }
