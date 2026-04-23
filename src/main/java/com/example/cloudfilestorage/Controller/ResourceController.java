@@ -4,6 +4,7 @@ import com.example.cloudfilestorage.DTO.ErrorResponse;
 import com.example.cloudfilestorage.DTO.FileDTO;
 import com.example.cloudfilestorage.DTO.ResourceDTO;
 import com.example.cloudfilestorage.Exception.InvalidResourcePathException;
+import com.example.cloudfilestorage.Repository.ResourceRepository;
 import com.example.cloudfilestorage.Service.ResourceService;
 import com.example.cloudfilestorage.Service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -114,7 +115,6 @@ public class ResourceController {
             @Parameter(description = "Ресурси які будуть завантажені")
             @RequestPart("object") List<MultipartFile> files) {
         String username = auth.getName();
-        System.out.println("upload resources ");
 
         storageService.uploadResource(path, files, username);
         List<ResourceDTO> resourceDTO = resourceService.uploadResource(path, files, username);
@@ -164,13 +164,13 @@ public class ResourceController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping("/move")
-    public ResponseEntity<FileDTO> move(
+    public ResponseEntity<ResourceDTO> move(
             @Parameter(description = "Папку яку ми хочему переймувати", example = "main/src/prod/") @RequestParam("from") String from,
             @Parameter(description = "Як вона буде переймована", example = "main/src/prod2/") @RequestParam("to") String to, Authentication auth) {
         String username = auth.getName();
 
         storageService.move(from, to, username);
-        FileDTO resource = resourceService.move(from, to, username);
+        ResourceDTO resource = resourceService.move(from, to, username);
 
         return ResponseEntity.ok(resource);
     }

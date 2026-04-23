@@ -6,12 +6,9 @@ import java.util.List;
 
 public class Main2 {
     public static void main(String[] args) {
-       String fullPathTo = "Patern uml/qwe1/";
-        String path = fullPathTo.substring(0,fullPathTo.length() - 1);
+       String fullPath = "Patern uml/qwe1/dfdf";
+        fullPath = fullPath.substring(fullPath.lastIndexOf("/") + 1);
 
-
-        path = path.substring(path.lastIndexOf("/") + 1);
-        System.out.println(path);
-        System.out.println(path);
+        System.out.println(fullPath);
     }
 }

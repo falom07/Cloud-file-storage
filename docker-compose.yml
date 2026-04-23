@@ -57,8 +57,18 @@ services:
     networks:
       - cloud-file
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+
 volumes:
-  pgdata: { }
+  redis_data:
+  pgdata:
+  ./minio-data:
 
 networks:
   cloud-file:

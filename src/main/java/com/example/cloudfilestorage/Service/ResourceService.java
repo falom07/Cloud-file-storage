@@ -1,13 +1,11 @@
 package com.example.cloudfilestorage.Service;
 
 import com.example.cloudfilestorage.DTO.DirectoryDTO;
-import com.example.cloudfilestorage.DTO.FileDTO;
 import com.example.cloudfilestorage.DTO.ResourceDTO;
 import com.example.cloudfilestorage.Entity.Resource;
 import com.example.cloudfilestorage.Entity.ResourceType;
 import com.example.cloudfilestorage.Entity.User;
 import com.example.cloudfilestorage.Exception.InvalidResourcePathException;
-import com.example.cloudfilestorage.Exception.ParentPathNotExistException;
 import com.example.cloudfilestorage.Exception.ResourceAlreadyExistException;
 import com.example.cloudfilestorage.Exception.ResourceNotExistException;
 import com.example.cloudfilestorage.Mapper.ResourceMapper;
@@ -49,8 +47,8 @@ public class ResourceService {
 
     public Resource getResource(String path, String username) {
         Integer userId = userService.getUserIdByName(username);
-        String fullPath = getFullPath(username, path.substring(0, path.lastIndexOf("/") + 1));
-        String fileName = path.substring(path.lastIndexOf("/") + 1);
+        String fullPath = getFullPath(username, getParentPath(path));
+        String fileName = getResourceName(path);
 
         return resourceRepository
                 .findResourceByOwnerIdAndPathAndName(userId, fullPath, fileName)
@@ -68,65 +66,57 @@ public class ResourceService {
     }
 
     private String getDirectoryName(String fullPath) {
-        String directoryName = fullPath.substring(0, fullPath.length() - 1);
-        directoryName = directoryName.substring(directoryName.lastIndexOf("/") + 1);
+        String directoryName = getPathWithOutSlash(fullPath);
+        directoryName = getResourceName(directoryName);
         return directoryName;
     }
 
     private static String getParentPath(String path, int levels) {
         for (int i = 0; i < levels; i++) {
             if (path.lastIndexOf("/") != path.indexOf("/")) {
-                path = path.substring(0, path.length() - 1);
-                path = path.substring(0, path.lastIndexOf("/") + 1);
+                path = getParentPathOfDirectory(path);
             }
         }
         return path;
     }
 
-    public FileDTO move(String from, String to, String username) {
+    public ResourceDTO move(String from, String to, String username) {
         String fullPathFrom = getFullPath(username, from);
         String fullPathTo = getFullPath(username, to);
-
-        if (isDirectory(from)) {
-            moveDirectory(from, to, fullPathFrom, fullPathTo, username);
-        } else {
-            moveFile(from, to, fullPathFrom, fullPathTo);
-        }
-
-        return null;
-    }
-
-    private void moveFile(String from, String to, String fullPathFrom, String fullPathTo) {
-
-        String fileNameFrom = fullPathFrom.substring(fullPathFrom.lastIndexOf("/") + 1);
-        String fileNameTo = fullPathTo.substring(fullPathTo.lastIndexOf("/") + 1);
-        String pathFrom = fullPathFrom.substring(0, fullPathFrom.lastIndexOf("/") + 1);
-        String pathTo = fullPathTo.substring(0, fullPathTo.lastIndexOf("/") + 1);
-
-        resourceRepository.updateFilePathAndName(pathFrom, pathTo, ResourceType.FILE, fileNameFrom, fileNameTo);
-    }
-
-    private void moveDirectory(String from, String to, String fullPathFrom, String fullPathTo, String username) {
         Integer userId = userService.getUserIdByName(username);
 
-        String nameOfFileFrom = from.substring(0,from.length() - 1);
-        nameOfFileFrom = nameOfFileFrom.substring(nameOfFileFrom.lastIndexOf("/") + 1);
-
-        String nameOfFileTo = to.substring(0,to.length() - 1);
-        nameOfFileTo = nameOfFileTo.substring(nameOfFileTo.lastIndexOf("/") + 1);
-
-        String pathFrom = fullPathFrom.substring(0, fullPathFrom.lastIndexOf("/"));
-        pathFrom = pathFrom.substring(0, pathFrom.lastIndexOf("/") + 1);
-
-        String pathTo = fullPathTo.substring(0, fullPathTo.lastIndexOf("/"));
-        pathTo = pathTo.substring(0, pathTo.lastIndexOf("/") + 1);
-
-        try {
-            resourceRepository.updateNameOfResource(nameOfFileFrom, nameOfFileTo, ResourceType.DIRECTORY, userId, pathFrom, pathTo);
-            resourceRepository.updatePath(fullPathFrom, fullPathTo);
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
+        if (isDirectory(from)) {
+            return moveDirectory(from, to, fullPathFrom, fullPathTo, userId);
+        } else {
+            return moveFile(fullPathFrom, fullPathTo, userId);
         }
+    }
+
+    private ResourceDTO moveFile(String fullPathFrom, String fullPathTo, Integer userId) {
+
+        String fileNameFrom = getResourceName(fullPathFrom);
+        String fileNameTo = getResourceName(fullPathTo);
+        String pathFrom = getParentPath(fullPathFrom);
+        String pathTo = getParentPath(fullPathTo);
+
+        resourceRepository.updateFilePathAndName(pathFrom, pathTo, ResourceType.FILE, fileNameFrom, fileNameTo);
+        Resource resource = resourceRepository.getResourceByPathAndNameAndUserIdAndType(pathTo, fileNameTo, userId, ResourceType.FILE);
+
+        return resourceMapper.mapFileDto(resource);
+    }
+
+    private ResourceDTO moveDirectory(String from, String to, String fullPathFrom, String fullPathTo, Integer userId) {
+
+        String nameOfFileFrom = getParentPathOfDirectory(from);
+        String nameOfFileTo = getParentPathOfDirectory(to);
+        String pathFrom = getParentPathOfDirectory(fullPathFrom);
+        String pathTo = getParentPathOfDirectory(fullPathTo);
+
+        resourceRepository.updateNameAndPathOfResource(nameOfFileFrom, nameOfFileTo, ResourceType.DIRECTORY, userId, pathFrom, pathTo);
+        resourceRepository.updatePaths(fullPathFrom, fullPathTo);
+
+        Resource resource = resourceRepository.getResourceByPathAndNameAndUserIdAndType(pathTo, nameOfFileTo, userId, ResourceType.DIRECTORY);
+        return resourceMapper.mapDirectoryDTO(resource);
     }
 
     private boolean isDirectory(String from) {
@@ -151,15 +141,15 @@ public class ResourceService {
             long size = file.getSize();
             do {
                 if (relavantPath.endsWith("/")) {
-                    relavantPath = relavantPath.substring(0, relavantPath.length() - 1);
-                    String directoryName = relavantPath.substring(relavantPath.lastIndexOf("/") + 1);
-                    relavantPath = relavantPath.substring(0, relavantPath.lastIndexOf("/") + 1);
+                    relavantPath = getPathWithOutSlash(relavantPath);
+                    String directoryName = getResourceName(relavantPath);
+                    relavantPath = getParentPath(relavantPath);
                     String finalPath = fullPath + relavantPath;
                     if (isResourceExist(finalPath, directoryName)) continue;
                     resources.add(saveDirectory(finalPath, directoryName, user));
                 } else {
-                    String fileName = relavantPath.substring(relavantPath.lastIndexOf("/") + 1);
-                    relavantPath = relavantPath.substring(0, relavantPath.lastIndexOf("/") + 1);
+                    String fileName = getResourceName(relavantPath);
+                    relavantPath = getParentPath(relavantPath);
                     String finalPath = fullPath + relavantPath;
                     resources.add(saveFile(finalPath, fileName, size, user));
                 }
@@ -188,27 +178,38 @@ public class ResourceService {
         Integer userId = userService.getUserIdByName(username);
         User user = userService.getUserById(userId);
         String fullPath = getFullPath(username, path);
-        fullPath = fullPath.substring(0, fullPath.length() - 1);
-        String directoryName = fullPath.substring(fullPath.lastIndexOf("/") + 1);
-        fullPath = fullPath.substring(0, fullPath.lastIndexOf("/") + 1);
+        fullPath = getPathWithOutSlash(fullPath);
+        String directoryName = getResourceName(fullPath);
+        fullPath = getParentPath(fullPath);
 
         if (isResourceExist(fullPath, directoryName)) throw new ResourceAlreadyExistException();
-//        if (!isParentPathExist(fullPath)) throw new ParentPathNotExistException();
 
         Resource resource = saveDirectory(fullPath, directoryName, user);
 
         return resourceMapper.mapDirectoryDTO(resource);
     }
 
-    private @NonNull Resource saveDirectory(String fullPath, String directoryName, User user) {
+    private static String getResourceName(String path) {
+        return path.substring(path.lastIndexOf("/") + 1);
+    }
+
+    private static String getPathWithOutSlash(String path) {
+        return path.substring(0, path.length() - 1);
+    }
+
+    private static String getParentPathOfDirectory(String path){
+        path = getPathWithOutSlash(path);
+        return getParentPath(path);
+    }
+
+    private static String getParentPath(String path) {
+        return path.substring(0, path.lastIndexOf("/") + 1);
+    }
+
+    private Resource saveDirectory(String fullPath, String directoryName, User user) {
         return resourceRepository.save(new Resource(
                 fullPath, directoryName, 0L, ResourceType.DIRECTORY, user
         ));
-    }
-
-    private boolean isParentPathExist(String path) {
-        Optional<Resource> resource = resourceRepository.getResourceByPath(path);
-        return resource.isPresent();
     }
 
     private boolean isResourceExist(String fullPath, String resourceName) {

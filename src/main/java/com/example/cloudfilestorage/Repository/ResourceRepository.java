@@ -32,21 +32,21 @@ public interface ResourceRepository extends JpaRepository<Resource, Long> {
             r.path = :newPath
             WHERE r.type = :type AND r.name = :oldName AND r.path = :oldPath AND r.owner.id = :userId 
             """)
-    void updateNameOfResource(@Param("oldName") String oldName,
-                              @Param("newName") String newName,
-                              @Param("type") ResourceType type,
-                              @Param("userId") Integer userId,
-                              @Param("oldPath") String pathFrom,
-                              @Param("newPath") String pathTo);
+    void updateNameAndPathOfResource(@Param("oldName") String oldName,
+                                     @Param("newName") String newName,
+                                     @Param("type") ResourceType type,
+                                     @Param("userId") Integer userId,
+                                     @Param("oldPath") String pathFrom,
+                                     @Param("newPath") String pathTo);
 
     @Modifying
     @Query("""
                 UPDATE Resource r
                 SET r.path = CONCAT(:newPath, SUBSTRING(r.path,LENGTH(:oldPath) + 1))
-                WHERE r.path LIKE CONCAT(:oldPath, '/%')
+                WHERE r.path LIKE CONCAT(:oldPath, '%')
             """)
-    void updatePath(@Param("oldPath") String oldPath,
-                    @Param("newPath") String newPath);
+    void updatePaths(@Param("oldPath") String oldPath,
+                     @Param("newPath") String newPath);
 
     @Modifying
     @Query("""
@@ -69,5 +69,16 @@ public interface ResourceRepository extends JpaRepository<Resource, Long> {
     Optional<Resource> getResourceByPath(String path);
 
     void deleteDirectoryByOwnerIdAndPathAndName(Integer userId, String fullPath, String directoryName);
+
+    @Query("""
+                    SELECT r 
+                    FROM Resource r 
+                    WHERE r.path = :path AND r.owner.id = :userId AND r.name = :name AND r.type = :type
+            """)
+    Resource getResourceByPathAndNameAndUserIdAndType(
+            @Param("path") String pathTo,
+            @Param("name") String nameOfFileTo,
+            @Param("userId") Integer userId,
+            @Param("type") ResourceType resourceType);
 }
 

@@ -2,6 +2,7 @@ package com.example.cloudfilestorage.Entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -34,6 +35,7 @@ public class Resource {
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 
+    @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
