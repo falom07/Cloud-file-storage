@@ -8,6 +8,7 @@ import io.minio.errors.*;
 import io.minio.messages.Item;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,42 +26,19 @@ import static com.example.cloudfilestorage.util.Util.BUCKET_NAME;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class StorageService {
 
     private final MinioClient minioClient;
     private final UserService userService;
-
-    public StorageService(MinioClient minioClient, UserService userService) {
-        this.minioClient = minioClient;
-        this.userService = userService;
-    }
-
 
     @PostConstruct
     public void init() {
         createBucketIfNotExists(BUCKET_NAME);
     }
 
-    private void createBucketIfNotExists(String nameOfBucket) {
-        try {
-            boolean isExist = minioClient.bucketExists(
-                    BucketExistsArgs.builder().bucket(nameOfBucket).build()
-            );
-
-            if (!isExist) {
-                minioClient.makeBucket(
-                        MakeBucketArgs.builder().bucket(nameOfBucket).build()
-                );
-            }
-
-        } catch (Exception e) {
-            throw new RuntimeException("Error during creating bucket ", e);
-        }
-
-    }
-
-    public void deleteFile(String path, String username) {
-        String fullPath = getFullPath(path, username);
+    public void deleteFile(String path, Integer userId) {
+        String fullPath = getFullPath(path, userId);
 
         try {
             minioClient.
@@ -88,8 +66,8 @@ public class StorageService {
         }
     }
 
-    public void addFolderToZip(String username, ZipOutputStream zipOut, String path) {
-        String fullPath = getFullPath(path, username);
+    public void addFolderToZip(Integer userId, ZipOutputStream zipOut, String path) {
+        String fullPath = getFullPath(path, userId);
 
         try {
             Iterable<Result<Item>> results = minioClient.listObjects(
@@ -101,7 +79,7 @@ public class StorageService {
             );
 
             for (Result<Item> result : results) {
-                addFileToZip(username, zipOut, result.get().objectName(), fullPath);
+                addFileToZip(zipOut, result.get().objectName(), fullPath);
             }
 
         } catch (Exception e) {
@@ -109,12 +87,7 @@ public class StorageService {
         }
     }
 
-    private String getFullPath(String path, String username) {
-        long userId = userService.getUserIdByName(username);
-        return "user-" + userId + "-files/" + path;
-    }
-
-    public void addFileToZip(String username, ZipOutputStream zipOut, String fullPath, String relativePath) throws IOException {
+    public void addFileToZip(ZipOutputStream zipOut, String fullPath, String relativePath) throws IOException {
         InputStream stream = downloadFile(fullPath);
         String fileName = fullPath.substring(relativePath.length());
 
@@ -125,13 +98,8 @@ public class StorageService {
         stream.close();
     }
 
-    private String extractFileName(String fullPath, String relativePath) {
-        String path = relativePath.replace(fullPath,"");
-        return path.substring(path.length() - 1);
-    }
-
-    public void deleteDirectory(String path, String username) {
-        String fullPath = getFullPath(path, username);
+    public void deleteDirectory(String path, Integer userId) {
+        String fullPath = getFullPath(path, userId);
         try {
             Iterable<Result<Item>> results = minioClient.listObjects(
                     ListObjectsArgs.builder()
@@ -143,7 +111,7 @@ public class StorageService {
 
             for (Result<Item> result : results) {
                 String objectName = getObjectName(result);
-                deleteFile(objectName, username);
+                deleteFile(objectName, userId);
             }
 
         } catch (Exception e) {
@@ -151,46 +119,21 @@ public class StorageService {
         }
     }
 
-    private static String getObjectName(Result<Item> result) throws ErrorResponseException, InsufficientDataException, InternalException, InvalidKeyException, InvalidResponseException, IOException, NoSuchAlgorithmException, ServerException, XmlParserException {
-        String objectName = result.get().objectName();
-        objectName = objectName.substring(objectName.indexOf("/") + 1);
-        return objectName;
-    }
-
-    public void move(String from, String to, String username) {
-        String fromFullPath = getFullPath(from, username);
-        String toFullPath = getFullPath(to, username);
+    public void move(String from, String to, Integer userId) {
+        String fromFullPath = getFullPath(from, userId);
+        String toFullPath = getFullPath(to, userId);
 
         validatePaths(fromFullPath, toFullPath);
 
 
         if (from.endsWith("/")) {
-            moveDirectory(fromFullPath, toFullPath, username);
+            moveDirectory(fromFullPath, toFullPath, userId);
         } else {
-            moveFiles(fromFullPath, toFullPath, username);
+            moveFiles(fromFullPath, toFullPath, userId);
         }
     }
 
-    @SneakyThrows
-    private void moveDirectory(String fromFullPath, String toFullPath, String ownerName) {
-        Iterable<Result<Item>> results = minioClient.listObjects(
-                ListObjectsArgs.builder()
-                        .bucket(BUCKET_NAME)
-                        .prefix(fromFullPath)
-                        .recursive(true)
-                        .build()
-        );
-
-        for (Result<Item> result : results) {
-            String from = result.get().objectName();
-            String relativePath = from.substring(fromFullPath.length());
-            String toPath = toFullPath + relativePath;
-
-            moveFiles(from, toPath, ownerName);
-        }
-    }
-
-    private void moveFiles(String from, String to, String username) {
+    private void moveFiles(String from, String to, Integer userId) {
 
         try {
             minioClient.copyObject(
@@ -207,7 +150,7 @@ public class StorageService {
             );
 
             String relativePath = from.substring(from.indexOf("/") + 1);
-            deleteFile(relativePath, username);
+            deleteFile(relativePath, userId);
 
         } catch (Exception e) {
             throw new RuntimeException("Failed during moving or rename File");
@@ -228,28 +171,14 @@ public class StorageService {
         }
     }
 
-    private void validatePaths(String from, String to) {
-        if (from == null || from.isEmpty() || to == null || to.isEmpty()) {
-            throw new InvalidResourcePathException();
-        }
-
-        if (from.equals(to)) {
-            throw new InvalidResourcePathException();
-        }
-
-        if (fileOrDirectoryIsExist(to)) {
-            throw new ResourceAlreadyExistException();
-        }
-    }
-
-    public void uploadResource(String path, List<MultipartFile> files, String username) {
-        String fullPath = getFullPath(path, username);
+    public void uploadResource(String path, List<MultipartFile> files, Integer userId) {
+        String fullPath = getFullPath(path, userId);
 
         for (MultipartFile file : files) {
             String fileName = file.getOriginalFilename();
             String objectName = fullPath + fileName;
             if (fileOrDirectoryIsExist(objectName)) {
-                throw new InvalidResourcePathException();
+                throw new InvalidResourcePathException("Invalid path");
             }
 
             try {
@@ -267,8 +196,8 @@ public class StorageService {
         }
     }
 
-    public void createDirectory(String path, String username) {
-        String fullPath = getFullPath(path.substring(0, path.lastIndexOf("/") + 1), username);
+    public void createDirectory(String path, Integer userId) {
+        String fullPath = getFullPath(path.substring(0, path.lastIndexOf("/") + 1), userId);
 
         try {
             minioClient.putObject(
@@ -287,9 +216,69 @@ public class StorageService {
         }
     }
 
-    public InputStream downloadFile(String username, ResourceDTO dto) {
+    public InputStream downloadFile(Integer userId, ResourceDTO dto) {
         String relevantPath = dto.path() + dto.name();
-        String fullPath = getFullPath(relevantPath,username);
+        String fullPath = getFullPath(relevantPath, userId);
         return downloadFile(fullPath);
+    }
+
+    private static String getObjectName(Result<Item> result) throws ErrorResponseException, InsufficientDataException, InternalException, InvalidKeyException, InvalidResponseException, IOException, NoSuchAlgorithmException, ServerException, XmlParserException {
+        String objectName = result.get().objectName();
+        objectName = objectName.substring(objectName.indexOf("/") + 1);
+        return objectName;
+    }
+
+    private String getFullPath(String path, Integer userId) {
+        return "user-" + userId + "-files/" + path;
+    }
+
+    private void createBucketIfNotExists(String nameOfBucket) {
+        try {
+            boolean isExist = minioClient.bucketExists(
+                    BucketExistsArgs.builder().bucket(nameOfBucket).build()
+            );
+
+            if (!isExist) {
+                minioClient.makeBucket(
+                        MakeBucketArgs.builder().bucket(nameOfBucket).build()
+                );
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error during creating bucket ", e);
+        }
+    }
+
+    @SneakyThrows
+    private void moveDirectory(String fromFullPath, String toFullPath, Integer userId) {
+        Iterable<Result<Item>> results = minioClient.listObjects(
+                ListObjectsArgs.builder()
+                        .bucket(BUCKET_NAME)
+                        .prefix(fromFullPath)
+                        .recursive(true)
+                        .build()
+        );
+
+        for (Result<Item> result : results) {
+            String from = result.get().objectName();
+            String relativePath = from.substring(fromFullPath.length());
+            String toPath = toFullPath + relativePath;
+
+            moveFiles(from, toPath, userId);
+        }
+    }
+
+    private void validatePaths(String from, String to) {
+        if (from == null || from.isEmpty() || to == null || to.isEmpty()) {
+            throw new InvalidResourcePathException("Invalid or empty path ");
+        }
+
+        if (from.equals(to)) {
+            throw new InvalidResourcePathException("path from and to the same");
+        }
+
+        if (fileOrDirectoryIsExist(to)) {
+            throw new ResourceAlreadyExistException("resource is exist");
+        }
     }
 }

@@ -4,6 +4,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 .env
+src/main/java/Main
 
 ### STS ###
 .apt_generated

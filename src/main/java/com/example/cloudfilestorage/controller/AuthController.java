@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -27,34 +28,36 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 @Tag(name = "Authenticate", description = "Авторизація,реєстрація і вихід з сесії ")
 public class AuthController {
 
     private final UserService userService;
     private final AuthenticationManager authenticationManager;
 
-    public AuthController(UserService userService, AuthenticationManager authenticationManager) {
-        this.userService = userService;
-        this.authenticationManager = authenticationManager;
-    }
-
-    @Operation(summary = "Вихід з сесії")
-    @ApiResponses({
-            @ApiResponse(responseCode = "401", description = "Користувач не авторизований",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "500", description = "Помилка сервера",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    })
-    @PostMapping("/sign-out")
-    public ResponseEntity<Void> logout(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            session.invalidate();
-        }
-        SecurityContextHolder.clearContext();
-
-        return ResponseEntity.noContent().build();
-    }
+//    @Operation(summary = "Вихід з сесії")
+//    @ApiResponses({
+//            @ApiResponse(responseCode = "401", description = "Користувач не авторизований",
+//                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+//            @ApiResponse(responseCode = "500", description = "Помилка сервера",
+//                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+//    })
+//    @PostMapping("/sign-out")
+//    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+//        Cookie cookie = new Cookie("SESSION",null);
+//        cookie.setMaxAge(0);
+//        cookie.setPath("/");
+//        cookie.setHttpOnly(true);
+//        response.addCookie(cookie);
+//
+//        HttpSession session = request.getSession(false);
+//        if (session != null) {
+//            session.invalidate();
+//        }
+//        SecurityContextHolder.clearContext();
+//
+//        return ResponseEntity.noContent().build();
+//    }
 
     @Operation(summary = "Вхід для користувача")
     @ApiResponses({

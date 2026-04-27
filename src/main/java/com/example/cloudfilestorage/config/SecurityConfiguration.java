@@ -17,7 +17,6 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-//@EnableRedisHttpSession(maxInactiveIntervalInSeconds = 3600)
 public class SecurityConfiguration {
 
     @Bean
@@ -37,6 +36,7 @@ public class SecurityConfiguration {
                 .logout(logout -> logout
                         .logoutUrl("/api/auth/sign-out")
                         .invalidateHttpSession(true)
+                        .clearAuthentication(true)
                         .deleteCookies("SESSION")
                         .permitAll());
 

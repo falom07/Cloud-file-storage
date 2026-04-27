@@ -2,7 +2,6 @@ package com.example.cloudfilestorage.controller;
 
 import com.example.cloudfilestorage.dto.ErrorResponse;
 import com.example.cloudfilestorage.dto.UserResponseDTO;
-import com.example.cloudfilestorage.exception.UnauthorizedException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -14,8 +13,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/user")
@@ -31,10 +28,7 @@ public class UserController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "500", description = "Помилка сервера",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))})
-    public ResponseEntity<Map<String, String>> getUser(Authentication auth) {
-        String username = auth.getName();
-        if (username.isEmpty()) throw new UnauthorizedException();
-
-        return ResponseEntity.ok(Map.of("username", username));
+    public ResponseEntity<UserResponseDTO> getUser(Authentication auth) {
+        return ResponseEntity.ok(new UserResponseDTO(auth.getName()));
     }
 }

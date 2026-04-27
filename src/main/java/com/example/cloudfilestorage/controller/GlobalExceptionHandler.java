@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidResourcePathException.class)
-    public ResponseEntity<ErrorResponse> handleResourcePath() {
-        ErrorResponse error = new ErrorResponse("Invalid or empty path");
+    public ResponseEntity<ErrorResponse> handleResourcePath(InvalidResourcePathException e) {
+        ErrorResponse error = new ErrorResponse(e.getMessage());
 
         return ResponseEntity.badRequest().body(error);
     }
@@ -25,37 +25,37 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(UserAlreadyExistException.class)
-    public ResponseEntity<ErrorResponse> userAlreadyExisttExceptions(UserAlreadyExistException e){
+    public ResponseEntity<ErrorResponse> userAlreadyExistExceptions(UserAlreadyExistException e) {
         ErrorResponse error = new ErrorResponse(e.getMessage());
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     @ExceptionHandler(ResourceAlreadyExistException.class)
-    public ResponseEntity<ErrorResponse> resourceAlreadyExistException(){
-        ErrorResponse error = new ErrorResponse("Resource by this path already exist");
+    public ResponseEntity<ErrorResponse> resourceAlreadyExistException(ResourceAlreadyExistException e) {
+        ErrorResponse error = new ErrorResponse(e.getMessage());
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
     @ExceptionHandler(ParentPathNotExistException.class)
-    public ResponseEntity<ErrorResponse> parentPathNotExistException(){
-        ErrorResponse error = new ErrorResponse("Path is not exist");
+    public ResponseEntity<ErrorResponse> parentPathNotExistException(ParentPathNotExistException e) {
+        ErrorResponse error = new ErrorResponse(e.getMessage());
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
 
     @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<ErrorResponse> handleUnauthorizedUser(){
-        ErrorResponse errorResponse = new ErrorResponse("User is not authorized");
+    public ResponseEntity<ErrorResponse> handleUnauthorizedUser(UnauthorizedException e) {
+        ErrorResponse errorResponse = new ErrorResponse(e.getMessage());
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
     }
 
     @ExceptionHandler(ResourceNotExistException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidResourcePath() {
-        ErrorResponse error = new ErrorResponse("File is not exist");
+    public ResponseEntity<ErrorResponse> handleInvalidResourcePath(ResourceNotExistException e) {
+        ErrorResponse error = new ErrorResponse(e.getMessage());
 
         return ResponseEntity.badRequest().body(error);
     }

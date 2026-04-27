@@ -2,9 +2,8 @@ package com.example.cloudfilestorage.controller;
 
 import com.example.cloudfilestorage.dto.ErrorResponse;
 import com.example.cloudfilestorage.dto.ResourceDTO;
-import com.example.cloudfilestorage.exception.InvalidResourcePathException;
-import com.example.cloudfilestorage.service.ResourceService;
-import com.example.cloudfilestorage.service.StorageService;
+import com.example.cloudfilestorage.entity.User;
+import com.example.cloudfilestorage.service.FacadeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -13,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,22 +21,15 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.List;
-import java.util.zip.ZipOutputStream;
 
 @RestController
 @RequestMapping("/api/resource")
+@RequiredArgsConstructor
 @Tag(name = "Resource", description = "Керуванням файлами та дерикторіями")
 public class ResourceController {
 
-    private final ResourceService resourceService;
-    private final StorageService storageService;
-
-    public ResourceController(ResourceService resourceService, StorageService storageService) {
-        this.resourceService = resourceService;
-        this.storageService = storageService;
-    }
+    private final FacadeService service;
 
     @Operation(summary = "Взяти ресурс по шляху")
     @ApiResponses({
@@ -53,14 +46,11 @@ public class ResourceController {
     public ResponseEntity<ResourceDTO> getResource(
             @Parameter(description = "Шлях до ресурсу", example = "main/src/prod/text.txt") @RequestParam String path,
             Authentication auth) {
-        if (!path.isEmpty()) {
-            String ownerName = auth.getName();
-            ResourceDTO fileDto = resourceService.getInfoAboutFile(path, ownerName);
 
-            return ResponseEntity.ok(fileDto);
-        } else {
-            throw new InvalidResourcePathException();
-        }
+        User user = (User) auth.getPrincipal();
+        ResourceDTO resourceDTO = service.get(path, user);
+
+        return ResponseEntity.ok(resourceDTO);
     }
 
     @Operation(summary = "Видалення ресурсів")
@@ -79,17 +69,8 @@ public class ResourceController {
             @Parameter(description = "Колекція шляхів за якими будуть видалені ресурси", example = "main/src/prod/")
             @RequestParam List<String> path, Authentication auth) {
 
-        if (path == null || path.isEmpty()) {
-            throw new InvalidResourcePathException();
-        }
-
-        String username = auth.getName();
-
-        if (path.size() == 1 && !path.get(0).endsWith("/")) {
-            deleteSingleFile(path.get(0), username);
-        } else {
-            deleteFilesOrDirectory(path, username);
-        }
+        User user = (User) auth.getPrincipal();
+        service.delete(path, user);
 
         return ResponseEntity.noContent().build();
     }
@@ -112,10 +93,9 @@ public class ResourceController {
             Authentication auth,
             @Parameter(description = "Ресурси які будуть завантажені")
             @RequestPart("object") List<MultipartFile> files) {
-        String username = auth.getName();
 
-        storageService.uploadResource(path, files, username);
-        List<ResourceDTO> resourceDTO = resourceService.uploadResource(path, files, username);
+        User user = (User) auth.getPrincipal();
+        List<ResourceDTO> resourceDTO = service.upload(path, files, user);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(resourceDTO);
     }
@@ -131,21 +111,12 @@ public class ResourceController {
             @ApiResponse(responseCode = "500", description = "Помилка сервера",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    @GetMapping("/download")
+    @GetMapping(value = "/download", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public void downloadResource(@Parameter(description = "Список шляхів до ресурсів які будуть скачені", example = "main/src/prod/")
                                  @RequestParam("path") String path, Authentication auth, HttpServletResponse response) throws IOException {
 
-        if (path == null || path.isEmpty()) {
-            throw new InvalidResourcePathException();
-        }
-
-        String username = auth.getName();
-
-        if (!path.endsWith("/")) {
-            downloadSingleFile(path, username, response);
-        } else {
-            downloadZip(path, username, response);
-        }
+        User user = (User) auth.getPrincipal();
+        service.download(path, user, response);
     }
 
     @Operation(summary = "Переміщення ресурсів та періймуваня")
@@ -165,10 +136,9 @@ public class ResourceController {
     public ResponseEntity<ResourceDTO> move(
             @Parameter(description = "Папку яку ми хочему переймувати", example = "main/src/prod/") @RequestParam("from") String from,
             @Parameter(description = "Як вона буде переймована", example = "main/src/prod2/") @RequestParam("to") String to, Authentication auth) {
-        String username = auth.getName();
 
-        storageService.move(from, to, username);
-        ResourceDTO resource = resourceService.move(from, to, username);
+        User user = (User) auth.getPrincipal();
+        ResourceDTO resource = service.move(from, to, user);
 
         return ResponseEntity.ok(resource);
     }
@@ -185,55 +155,9 @@ public class ResourceController {
     @GetMapping("/search")
     public ResponseEntity<List<ResourceDTO>> find(
             @Parameter(description = "частина від імені ресурсу", example = "file.txt") @RequestParam("query") String query) {
-        List<ResourceDTO> files = resourceService.findByQuery(query);
+
+        List<ResourceDTO> files = service.findResource(query);
         return ResponseEntity.ok(files);
-    }
-
-
-    private void downloadSingleFile(String path, String username, HttpServletResponse response) throws IOException {
-        ResourceDTO dto = resourceService.getInfoAboutFile(path, username);
-        InputStream stream = storageService.downloadFile(username, dto);
-
-        response.setContentType("application/octet-stream");
-        response.setHeader("Content-Disposition",
-                "attachment; filename=\"" + extractFileName(path) + "\"");
-
-        stream.transferTo(response.getOutputStream());
-        stream.close();
-    }
-
-    private String extractFileName(String path) {
-        return path.substring(path.lastIndexOf("/") + 1);
-    }
-
-    private void downloadZip(String path, String username, HttpServletResponse response) throws IOException {
-        response.setContentType("application/octet-stream");
-        response.setHeader("Content-Disposition", "attachment; filename=download.zip");
-
-        ZipOutputStream zipOut = new ZipOutputStream(response.getOutputStream());
-        storageService.addFolderToZip(username, zipOut, path);
-
-        zipOut.finish();
-    }
-
-    private void deleteSingleFile(String path, String ownerName) {
-        resourceService.deleteResource(path, ownerName);
-        storageService.deleteFile(path, ownerName);
-    }
-
-    private void deleteDirectory(String path, String username) {
-        storageService.deleteDirectory(path, username);
-        resourceService.deleteDirectory(path, username);
-    }
-
-    private void deleteFilesOrDirectory(List<String> paths, String username) {
-        for (String path : paths) {
-            if (path.endsWith("/")) {
-                deleteDirectory(path, username);
-            } else {
-                deleteSingleFile(path, username);
-            }
-        }
     }
 }
 

@@ -2,6 +2,7 @@ package com.example.cloudfilestorage.controller;
 
 import com.example.cloudfilestorage.dto.ErrorResponse;
 import com.example.cloudfilestorage.dto.ResourceDTO;
+import com.example.cloudfilestorage.entity.User;
 import com.example.cloudfilestorage.service.ResourceService;
 import com.example.cloudfilestorage.service.StorageService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -20,16 +22,12 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/directory")
+@RequiredArgsConstructor
 @Tag(name = "Directory", description = "Управління дерикторіями")
 public class DirectoryController {
 
     private final ResourceService resourceService;
     private final StorageService storageService;
-
-    public DirectoryController(ResourceService resourceService, StorageService storageService) {
-        this.resourceService = resourceService;
-        this.storageService = storageService;
-    }
 
     @Operation(summary = "Взяти дерикторії")
     @ApiResponses({
@@ -50,8 +48,8 @@ public class DirectoryController {
     public ResponseEntity<List<ResourceDTO>> getInfo(
             @Parameter(description = "Шлях до директорії в які ми хочемо дізнатися інформацію про ресурси", example = "main2/src2/prod/")
             @RequestParam("path") String path, Authentication auth) {
-        String username = auth.getName();
-        List<ResourceDTO> list = resourceService.getInfoAboutDirectory(path, username);
+        User user = (User) auth.getPrincipal();
+        List<ResourceDTO> list = resourceService.getInfoAboutDirectory(path, user.getId());
 
         return ResponseEntity.ok(list);
     }
@@ -74,9 +72,9 @@ public class DirectoryController {
     @PostMapping
     public ResponseEntity<ResourceDTO> createDirectory(
             @Parameter(description = "Шлях до директорії та її назва", example = "main2/src2/prod/") @RequestParam("path") String path, Authentication auth) {
-        String username = auth.getName();
-        ResourceDTO directory = resourceService.createDirectories(path, username);
-        storageService.createDirectory(path, username);
+        User user = (User) auth.getPrincipal();
+        ResourceDTO directory = resourceService.createDirectories(path, user.getId());
+        storageService.createDirectory(path, user.getId());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(directory);
     }

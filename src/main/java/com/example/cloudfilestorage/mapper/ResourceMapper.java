@@ -5,7 +5,6 @@ import com.example.cloudfilestorage.entity.Resource;
 import com.example.cloudfilestorage.entity.ResourceType;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -21,27 +20,12 @@ public class ResourceMapper {
         );
     }
 
-    public List<ResourceDTO> mapResourcesDto(List<Resource> resource) {
-        List<ResourceDTO> list = new ArrayList<>();
-        for (Resource path : resource) {
-            if (path.getType().equals(ResourceType.FILE)) {
-                list.add(mapFileDto(path));
-            } else {
-                list.add(mapDirectoryDTO(path));
-            }
-        }
-
-        return list;
-    }
-
-    public List<ResourceDTO> mapDirectoriesDto(List<Resource> resources) {
-        List<ResourceDTO> list = new ArrayList<>();
-        for (Resource resource : resources) {
-            ResourceDTO dto = resource.getType().equals(ResourceType.DIRECTORY)
-                    ? mapDirectoryDTO(resource) : mapFileDto(resource);
-            list.add(dto);
-        }
-        return list;
+    public List<ResourceDTO> mapResourcesDto(List<Resource> resources) {
+        return resources.stream()
+                .map(r -> r.getType().equals(ResourceType.DIRECTORY) ?
+                        mapDirectoryDTO(r) :
+                        mapFileDto(r))
+                .toList();
     }
 
     public ResourceDTO mapDirectoryDTO(Resource resource) {
