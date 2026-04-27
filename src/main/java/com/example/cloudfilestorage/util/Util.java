@@ -1,5 +1,8 @@
 package com.example.cloudfilestorage.util;
 
+import org.springframework.beans.factory.annotation.Value;
+
 public class Util {
-    public final static String BUCKET_NAME = "file-storages";
+    @Value("${minio.bucket.name}")
+    public static String BUCKET_NAME;
 }
