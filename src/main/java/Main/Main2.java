@@ -6,9 +6,18 @@ import java.util.List;
 
 public class Main2 {
     public static void main(String[] args) {
-       String fullPath = "Patern uml/qwe1/dfdf";
-        fullPath = fullPath.substring(fullPath.lastIndexOf("/") + 1);
+        int x = 10;
 
-        System.out.println(fullPath);
+        if (x > 5){
+            System.out.println("X more then 5");
+                                            System.out.println("X more then 5");
+            System.out.println("X more then 5");
+            System.out.println("X more then 5");
+        } else if (x > 6) {
+
+        } else if (x > 7) {
+
+        } else { System.out.println("X less then 5"); }
+
     }
 }

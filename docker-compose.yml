@@ -12,9 +12,9 @@ services:
     env_file:
       - .env
     environment:
-      DB_DATASOURCE_USER: postgres
-      DB_DATASOURCE_PASSWORD: postgres
-      DB_DATASOURCE_URL: jdbc:postgresql://localhost:5432/postgres
+      DB_DATASOURCE_USER: ${DB_USERNAME}
+      DB_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      DB_DATASOURCE_URL: ${DB_URL}
     networks:
       - cloud-file
     ports:
@@ -27,9 +27,9 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
@@ -38,7 +38,7 @@ services:
       - cloud-file
 
   front-end:
-    image: my-front:5.0
+    image: front-end:13.0
     ports:
       - "80:80"
 
@@ -49,8 +49,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: password123
+      MINIO_ROOT_USER: ${MINIO_USERNAME}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
     volumes:
       - ./minio-data:/data
     command: server /data --console-address ":9001"
@@ -68,7 +68,6 @@ services:
 volumes:
   redis_data:
   pgdata:
-  ./minio-data:
 
 networks:
   cloud-file:

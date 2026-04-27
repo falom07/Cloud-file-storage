@@ -1,7 +1,7 @@
 package com.example.cloudfilestorage.Repository;
 
-import com.example.cloudfilestorage.Entity.Resource;
-import com.example.cloudfilestorage.Entity.ResourceType;
+import com.example.cloudfilestorage.entity.Resource;
+import com.example.cloudfilestorage.entity.ResourceType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
